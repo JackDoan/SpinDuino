@@ -8,8 +8,18 @@
   int calibrationSettings[2] = {0};  //0 = brake/float; 1 = full throttle
   int EEPROMAddresses[2] = {0};
   int timeout = 20; //TODO get a value for this
+  int currentCommand = 0;
 
 void setup() {
+  Serial.begin(9600);
+  Serial.println("Hello!");
+  TCCR2B = TCCR2B & (0b11111000 | 0x1);
+  pinMode(calibrationJumper, INPUT);
+  digitalWrite(calibrationJumper, HIGH);
+  pinMode(statusLEDRed, OUTPUT);
+  pinMode(statusLEDGreen, OUTPUT);
+  pinMode(commandCapturePin, INPUT);
+  digitalWrite(commandCapturePin, HIGH);
   EEPROMAddresses[0] = 0;
   EEPROMAddresses[1] = 1;
   //eeprom_busy_wait();
@@ -19,7 +29,7 @@ void setup() {
 }
 
 void loop() {
-  int currentCommand = 0;
+  //currentCommand = 0;
   if (digitalRead(calibrationJumper) == 0) {
     digitalWrite(statusLEDRed, 1);
     digitalWrite(statusLEDGreen, 0);
@@ -35,8 +45,8 @@ void loop() {
   } 
 
   int holder = 0;
-  int command = 0;
-  holder = pulseIn(commandCapturePin, 1, timeout); //gets time signal is high in us
+  int command = 0;	
+  //holder = pulseIn(commandCapturePin, 1, timeout); //gets time signal is high in us
   if (holder >= calibrationSettings[1]) {
     command = 255;
     digitalWrite(statusLEDGreen, 1);
@@ -56,7 +66,24 @@ void loop() {
     digitalWrite(statusLEDRed, 1);
   }
   
-  currentCommand = command;
+
+  while (Serial.available()) {
+		int input = Serial.read();
+		switch (input) {
+			case 49:
+				currentCommand = currentCommand - 10;
+				break;
+			case 50:
+				currentCommand = currentCommand + 10;
+				break;
+			case 48:
+				currentCommand = 0;
+				break;
+		}
+		Serial.println(currentCommand);
+	}
+  //currentCommand = 100;
+  //currentCommand = command;
   analogWrite(pwmPin, currentCommand);
 
 }
